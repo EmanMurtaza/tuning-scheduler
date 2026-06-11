@@ -70,8 +70,17 @@ export function SchedulerProvider({
   }, []);
 
   const updateSettings = useCallback((updates: Partial<SystemSettings>) => {
-    setAppSettings((prev) => ({ ...prev, ...updates }));
-  }, []);
+    setAppSettings((prev) => {
+      const next = { ...prev, ...updates };
+      // Regenerate slots for new settings, preserving any already-booked slots
+      const fresh = generateAllTimeSlots(stationsList, next);
+      setSlotsList((cur) => {
+        const bookedIds = new Set(cur.filter((s) => !s.isAvailable).map((s) => s.id));
+        return fresh.map((s) => (bookedIds.has(s.id) ? { ...s, isAvailable: false } : s));
+      });
+      return next;
+    });
+  }, [stationsList]);
 
   // Booking management
   const createBooking = useCallback((booking: Booking) => {

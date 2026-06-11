@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useScheduler } from "@/contexts/SchedulerContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, MapPin, Wifi } from "lucide-react";
+import { Clock, MapPin, Wifi, Ban, CalendarX } from "lucide-react";
 
 interface StatusBoardProps {
   selectedStationId?: string;
@@ -87,7 +87,7 @@ function TimeHeader({ time, isCurrent }: { time: string; isCurrent: boolean }) {
 }
 
 export function StatusBoard({ selectedStationId, selectedDate, onBookSlot }: StatusBoardProps) {
-  const { stations, timeSlots, bookings } = useScheduler();
+  const { stations, timeSlots, bookings, settings } = useScheduler();
   const [currentTime, setCurrentTime] = useState(new Date());
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -137,6 +137,14 @@ export function StatusBoard({ selectedStationId, selectedDate, onBookSlot }: Sta
     return slotEnd > nowMin;
   });
 
+  // Closed-day detection driven by admin settings
+  const workingDays = settings.workingDays ?? [1, 2, 3, 4, 5];
+  const holidays = settings.holidays ?? [];
+  const viewedDayOfWeek = new Date(dateKey + "T00:00:00").getDay();
+  const isHoliday = holidays.includes(dateKey);
+  const isNonWorkingDay = !workingDays.includes(viewedDayOfWeek);
+  const isClosed = isHoliday || isNonWorkingDay;
+
   const formatClock = (d: Date) =>
     d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 
@@ -179,8 +187,25 @@ export function StatusBoard({ selectedStationId, selectedDate, onBookSlot }: Sta
         </div>
       </div>
 
+      {/* Closed-day banner */}
+      {isClosed && (
+        <div className="bg-slate-900 border border-slate-700 rounded-xl p-14 text-center">
+          {isHoliday ? (
+            <CalendarX className="w-12 h-12 text-red-700 mx-auto mb-4" />
+          ) : (
+            <Ban className="w-12 h-12 text-slate-700 mx-auto mb-4" />
+          )}
+          <p className="text-slate-300 font-mono tracking-widest uppercase text-sm font-bold">
+            {isHoliday ? "Holiday — Workshop Closed" : "Non-Working Day"}
+          </p>
+          <p className="text-slate-600 text-xs font-mono mt-2">
+            No appointments available on {dateKey}.
+          </p>
+        </div>
+      )}
+
       {/* One board per station */}
-      {displayStations.map((station) => {
+      {!isClosed && displayStations.map((station) => {
         const stationSlots = timeSlots.filter(
           (s) => s.stationId === station.id && s.id.includes(dateKey)
         );

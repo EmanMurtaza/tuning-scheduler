@@ -129,19 +129,19 @@ export const systemSettings: SystemSettings = {
 export function generateTimeSlots(
   stationId: string,
   date: Date,
-  maxBays: number = 5
+  maxBays: number = 5,
+  settings: SystemSettings = systemSettings
 ): TimeSlot[] {
   const slots: TimeSlot[] = [];
-  const [startHour, startMin] = systemSettings.businessHours.startTime
+  const [startHour, startMin] = settings.businessHours.startTime
     .split(":")
     .map(Number);
-  const [endHour, endMin] = systemSettings.businessHours.endTime
+  const [endHour, endMin] = settings.businessHours.endTime
     .split(":")
     .map(Number);
 
   const dateKey = date.toISOString().split("T")[0];
 
-  let timeIndex = 0;
   let currentTime = new Date(date);
   currentTime.setHours(startHour, startMin, 0, 0);
 
@@ -151,13 +151,12 @@ export function generateTimeSlots(
   const timeIntervals: { start: string; end: string }[] = [];
   while (currentTime < endTime) {
     const nextTime = new Date(currentTime);
-    nextTime.setMinutes(nextTime.getMinutes() + systemSettings.slotDuration);
+    nextTime.setMinutes(nextTime.getMinutes() + settings.slotDuration);
     timeIntervals.push({
       start: currentTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
       end: nextTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
     });
     currentTime = nextTime;
-    timeIndex++;
   }
 
   // Create one slot per (bay × time-interval) combination
@@ -177,8 +176,11 @@ export function generateTimeSlots(
   return slots;
 }
 
-// Generate all slots for today and next 7 days
-export function generateAllTimeSlots(): TimeSlot[] {
+// Generate all slots for today + next 7 days, respecting working days and holidays
+export function generateAllTimeSlots(
+  stationsData: Station[] = stations,
+  settings: SystemSettings = systemSettings
+): TimeSlot[] {
   const allSlots: TimeSlot[] = [];
   const today = new Date();
 
@@ -186,8 +188,15 @@ export function generateAllTimeSlots(): TimeSlot[] {
     const date = new Date(today);
     date.setDate(date.getDate() + dayOffset);
 
-    for (const station of stations) {
-      const slots = generateTimeSlots(station.id, date, station.maxParallelCars);
+    const dateKey = date.toISOString().split("T")[0];
+    const dayOfWeek = date.getDay(); // 0 = Sun
+
+    // Skip non-working days and holidays
+    if (!(settings.workingDays ?? [1, 2, 3, 4, 5]).includes(dayOfWeek)) continue;
+    if ((settings.holidays ?? []).includes(dateKey)) continue;
+
+    for (const station of stationsData) {
+      const slots = generateTimeSlots(station.id, date, station.maxParallelCars, settings);
       allSlots.push(...slots);
     }
   }
