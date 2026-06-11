@@ -64,10 +64,19 @@ export function SchedulerProvider({
 
   // Station management
   const updateStation = useCallback((stationId: string, updates: Partial<Station>) => {
-    setStationsList((prev) =>
-      prev.map((s) => (s.id === stationId ? { ...s, ...updates } : s))
-    );
-  }, []);
+    setStationsList((prev) => {
+      const updated = prev.map((s) => (s.id === stationId ? { ...s, ...updates } : s));
+      if ("maxParallelCars" in updates) {
+        // Regenerate slots for all stations using the updated bay count
+        const fresh = generateAllTimeSlots(updated, appSettings);
+        setSlotsList((cur) => {
+          const bookedIds = new Set(cur.filter((s) => !s.isAvailable).map((s) => s.id));
+          return fresh.map((s) => (bookedIds.has(s.id) ? { ...s, isAvailable: false } : s));
+        });
+      }
+      return updated;
+    });
+  }, [appSettings]);
 
   const updateSettings = useCallback((updates: Partial<SystemSettings>) => {
     setAppSettings((prev) => {
