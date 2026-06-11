@@ -120,7 +120,8 @@ export function StatusBoard({ selectedStationId, selectedDate, onBookSlot }: Sta
     hour12: false,
   });
 
-  // All unique time labels (sorted) for the selected date across displayed stations
+  // All unique time labels (sorted) — past slots hidden when viewing today
+  const isToday = dateKey === currentTime.toISOString().split("T")[0];
   const allTimeLabels = Array.from(
     new Set(
       timeSlots
@@ -128,7 +129,13 @@ export function StatusBoard({ selectedStationId, selectedDate, onBookSlot }: Sta
         .filter((s) => s.id.includes(dateKey))
         .map((s) => s.startTime)
     )
-  ).sort();
+  ).sort().filter((t) => {
+    if (!isToday) return true;
+    const [h, m] = t.split(":").map(Number);
+    const slotEnd = h * 60 + m + 30; // slot is hidden only after it fully ends
+    const nowMin = currentTime.getHours() * 60 + currentTime.getMinutes();
+    return slotEnd > nowMin;
+  });
 
   const formatClock = (d: Date) =>
     d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });

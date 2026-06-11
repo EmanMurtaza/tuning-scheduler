@@ -244,15 +244,22 @@ export const carTypes = [
   "Other",
 ];
 
-// Engine power options for dropdown
+// Engine displacement options for dropdown (cc)
 export const enginePowerOptions = [
-  "Under 100 BHP",
-  "100–150 BHP",
-  "151–200 BHP",
-  "201–300 BHP",
-  "301–400 BHP",
-  "401–500 BHP",
-  "Over 500 BHP",
+  "660 cc",
+  "800 cc",
+  "1000 cc",
+  "1200 cc",
+  "1300 cc",
+  "1500 cc",
+  "1600 cc",
+  "1800 cc",
+  "2000 cc",
+  "2400 cc",
+  "2700 cc",
+  "3000 cc",
+  "3500 cc",
+  "4000+ cc",
 ];
 
 // Engine types for dropdown

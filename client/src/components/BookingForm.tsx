@@ -278,7 +278,7 @@ export function BookingForm({
 
               <div>
                 <Label htmlFor="enginePower" className="text-sm font-semibold">
-                  Engine Power *
+                  Engine Displacement *
                 </Label>
                 <Select
                   value={formData.enginePower}
@@ -287,7 +287,7 @@ export function BookingForm({
                   }
                 >
                   <SelectTrigger id="enginePower" className="mt-1">
-                    <SelectValue placeholder="Select engine power" />
+                    <SelectValue placeholder="Select engine displacement" />
                   </SelectTrigger>
                   <SelectContent>
                     {enginePowerOptions.map((opt) => (
@@ -320,12 +320,10 @@ export function BookingForm({
                   <SelectContent>
                     {tuningTypes.map((type) => (
                       <SelectItem key={type.id} value={type.id}>
-                        <div className="flex items-center gap-2">
-                          <span>{type.name}</span>
-                          <span className="text-xs text-slate-500">
-                            ({type.duration}m)
-                          </span>
-                        </div>
+                        <span>{type.name}</span>
+                        <span className="text-xs text-slate-500 ml-2">
+                          {type.duration}m &nbsp;·&nbsp; Rs. {type.basePrice.toLocaleString()}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
