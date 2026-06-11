@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useScheduler } from "@/contexts/SchedulerContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -33,12 +33,126 @@ import {
   CalendarX,
   LayoutDashboard,
   MapPin,
+  Lock,
+  LogOut,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { TuningType, Station } from "@/lib/mockData";
 import { nanoid } from "nanoid";
 import { useLocation } from "wouter";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const ADMIN_USER = "admin";
+const ADMIN_PASS = "admin123";
+const AUTH_KEY = "tuning_admin_auth";
+
+function AdminLogin({ onLogin }: { onLogin: () => void }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    await new Promise((r) => setTimeout(r, 600));
+    if (username === ADMIN_USER && password === ADMIN_PASS) {
+      localStorage.setItem(AUTH_KEY, "1");
+      onLogin();
+    } else {
+      setError("Invalid username or password.");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        {/* Logo */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-14 h-14 bg-orange-500 rounded-sm flex items-center justify-center mb-4">
+            <Zap className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold font-mono tracking-widest text-white uppercase">
+            Admin Panel
+          </h1>
+          <p className="text-slate-500 text-xs tracking-wider mt-1">
+            TUNING SCHEDULER
+          </p>
+        </div>
+
+        <Card className="bg-slate-900 border border-slate-800 p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <Lock size={15} className="text-orange-400" />
+            <span className="text-slate-300 text-sm font-mono tracking-wider uppercase">
+              Sign In
+            </span>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Username
+              </Label>
+              <Input
+                autoFocus
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="admin"
+                className="mt-1.5 bg-slate-800 border-slate-700 text-slate-100 placeholder:text-slate-600 focus:border-orange-500"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Password
+              </Label>
+              <div className="relative mt-1.5">
+                <Input
+                  type={showPass ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="bg-slate-800 border-slate-700 text-slate-100 placeholder:text-slate-600 focus:border-orange-500 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                  tabIndex={-1}
+                >
+                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <p className="text-red-400 text-xs font-mono">{error}</p>
+            )}
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-orange-600 hover:bg-orange-700 text-white font-mono tracking-wider mt-2"
+            >
+              {loading ? "Signing in…" : "Sign In"}
+            </Button>
+          </form>
+
+          <div className="mt-5 pt-4 border-t border-slate-800 text-center">
+            <p className="text-slate-600 text-[11px] font-mono">
+              demo credentials: <span className="text-slate-500">admin / admin123</span>
+            </p>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
 
 export default function AdminPanel() {
   const {
@@ -53,7 +167,7 @@ export default function AdminPanel() {
     deleteTuningType,
   } = useScheduler();
   const [, setLocation] = useLocation();
-
+  const [authed, setAuthed] = useState(() => localStorage.getItem(AUTH_KEY) === "1");
   const [newTuning, setNewTuning] = useState<Partial<TuningType>>({});
   const [newSettings, setNewSettings] = useState({
     ...settings,
@@ -61,6 +175,15 @@ export default function AdminPanel() {
     workingDays: settings.workingDays ?? [1, 2, 3, 4, 5],
   });
   const [newHoliday, setNewHoliday] = useState("");
+
+  const handleLogout = () => {
+    localStorage.removeItem(AUTH_KEY);
+    setAuthed(false);
+  };
+
+  if (!authed) {
+    return <AdminLogin onLogin={() => setAuthed(true)} />;
+  }
 
   const handleUpdateStation = (stationId: string, field: string, value: any) => {
     updateStation(stationId, { [field]: value });
@@ -113,17 +236,28 @@ export default function AdminPanel() {
       {/* Header */}
       <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white">
         <div className="container py-6">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 bg-orange-500 rounded-sm flex items-center justify-center cursor-pointer"
-              onClick={() => setLocation("/")}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-10 h-10 bg-orange-500 rounded-sm flex items-center justify-center cursor-pointer"
+                onClick={() => setLocation("/")}
+              >
+                <Zap className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold font-mono">ADMIN PANEL</h1>
+                <p className="text-slate-400 text-sm">Manage stations, services, and bookings</p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLogout}
+              className="border-slate-600 text-slate-400 hover:border-red-500 hover:text-red-400 font-mono text-xs tracking-wider gap-1.5"
             >
-              <Zap className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold font-mono">ADMIN PANEL</h1>
-              <p className="text-slate-400 text-sm">Manage stations, services, and bookings</p>
-            </div>
+              <LogOut size={13} />
+              LOGOUT
+            </Button>
           </div>
         </div>
       </div>
