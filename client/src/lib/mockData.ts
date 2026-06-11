@@ -36,6 +36,7 @@ export interface Booking {
   contactNumber: string;
   carType: string;
   engineType: string;
+  enginePower?: string;
   tuningTypeId: string;
   bookingTime: string; // ISO timestamp
   status: "confirmed" | "in-progress" | "completed" | "cancelled";
@@ -51,6 +52,8 @@ export interface SystemSettings {
   };
   slotDuration: number; // in minutes
   defaultMaxCarsPerStation: number;
+  holidays: string[]; // ISO date strings yyyy-mm-dd
+  workingDays: number[]; // 0=Sun, 1=Mon, ..., 6=Sat
 }
 
 // Tuning Types
@@ -118,6 +121,8 @@ export const systemSettings: SystemSettings = {
   },
   slotDuration: 30, // 30 minutes per slot
   defaultMaxCarsPerStation: 5,
+  holidays: [],
+  workingDays: [1, 2, 3, 4, 5], // Mon–Fri
 };
 
 // Generate time slots for a given date, station, and all bays
@@ -237,6 +242,17 @@ export const carTypes = [
   "Subaru WRX",
   "Nissan GT-R",
   "Other",
+];
+
+// Engine power options for dropdown
+export const enginePowerOptions = [
+  "Under 100 BHP",
+  "100–150 BHP",
+  "151–200 BHP",
+  "201–300 BHP",
+  "301–400 BHP",
+  "401–500 BHP",
+  "Over 500 BHP",
 ];
 
 // Engine types for dropdown

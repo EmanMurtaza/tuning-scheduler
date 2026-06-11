@@ -21,9 +21,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Booking } from "@/lib/mockData";
-import { carTypes, engineTypes } from "@/lib/mockData";
+import { carTypes, engineTypes, enginePowerOptions } from "@/lib/mockData";
 import { nanoid } from "nanoid";
-import { Clock, DollarSign, CheckCircle2 } from "lucide-react";
+import { Clock, CheckCircle2 } from "lucide-react";
 
 interface BookingFormProps {
   stationId: string;
@@ -51,6 +51,7 @@ export function BookingForm({
     contactNumber: "",
     carType: "",
     engineType: "",
+    enginePower: "",
     tuningTypeId: "",
   });
 
@@ -69,6 +70,7 @@ export function BookingForm({
       !formData.contactNumber ||
       !formData.carType ||
       !formData.engineType ||
+      !formData.enginePower ||
       !formData.tuningTypeId
     ) {
       toast.error("Please fill in all fields");
@@ -88,6 +90,7 @@ export function BookingForm({
       contactNumber: formData.contactNumber,
       carType: formData.carType,
       engineType: formData.engineType,
+      enginePower: formData.enginePower,
       tuningTypeId: formData.tuningTypeId,
       bookingTime: new Date().toISOString(),
       status: "confirmed",
@@ -112,6 +115,7 @@ export function BookingForm({
         contactNumber: "",
         carType: "",
         engineType: "",
+        enginePower: "",
         tuningTypeId: "",
       });
       onClose();
@@ -271,6 +275,29 @@ export function BookingForm({
                   </SelectContent>
                 </Select>
               </div>
+
+              <div>
+                <Label htmlFor="enginePower" className="text-sm font-semibold">
+                  Engine Power *
+                </Label>
+                <Select
+                  value={formData.enginePower}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, enginePower: value })
+                  }
+                >
+                  <SelectTrigger id="enginePower" className="mt-1">
+                    <SelectValue placeholder="Select engine power" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {enginePowerOptions.map((opt) => (
+                      <SelectItem key={opt} value={opt}>
+                        {opt}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* Tuning Service */}
@@ -308,9 +335,8 @@ export function BookingForm({
                     <p className="text-sm text-slate-700">
                       {tuningType.description}
                     </p>
-                    <div className="flex items-center gap-2 mt-2 text-sm font-semibold text-orange-600">
-                      <DollarSign size={16} />
-                      {tuningType.basePrice}
+                    <div className="mt-2 text-sm font-semibold text-orange-600 font-mono">
+                      Rs. {tuningType.basePrice.toLocaleString()}
                     </div>
                   </div>
                 )}
