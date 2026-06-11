@@ -28,6 +28,7 @@ import {
   ChevronLeft,
   ChevronRight,
   BookOpen,
+  Home,
 } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -96,14 +97,25 @@ export default function CustomerDashboard() {
                 <p className="text-slate-500 text-xs tracking-wider">LIVE SLOT STATUS</p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setLocation("/admin")}
-              className="border-slate-700 text-slate-400 hover:border-orange-500 hover:text-orange-400 text-xs tracking-wider"
-            >
-              ADMIN
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setLocation("/")}
+                className="text-slate-400 hover:text-white hover:bg-slate-800 text-xs tracking-wider gap-1.5"
+              >
+                <Home size={13} />
+                HOME
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLocation("/admin")}
+                className="border-slate-700 text-slate-400 hover:border-orange-500 hover:text-orange-400 text-xs tracking-wider"
+              >
+                ADMIN
+              </Button>
+            </div>
           </div>
         </div>
       </div>

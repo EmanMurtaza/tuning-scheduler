@@ -37,6 +37,7 @@ import {
   LogOut,
   Eye,
   EyeOff,
+  Home,
 } from "lucide-react";
 import { TuningType, Station } from "@/lib/mockData";
 import { nanoid } from "nanoid";
@@ -249,15 +250,26 @@ export default function AdminPanel() {
                 <p className="text-slate-400 text-sm">Manage stations, services, and bookings</p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleLogout}
-              className="border-slate-600 text-slate-400 hover:border-red-500 hover:text-red-400 font-mono text-xs tracking-wider gap-1.5"
-            >
-              <LogOut size={13} />
-              LOGOUT
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setLocation("/")}
+                className="text-slate-400 hover:text-white hover:bg-slate-700 font-mono text-xs tracking-wider gap-1.5"
+              >
+                <Home size={13} />
+                HOME
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLogout}
+                className="border-slate-600 text-slate-400 hover:border-red-500 hover:text-red-400 font-mono text-xs tracking-wider gap-1.5"
+              >
+                <LogOut size={13} />
+                LOGOUT
+              </Button>
+            </div>
           </div>
         </div>
       </div>
