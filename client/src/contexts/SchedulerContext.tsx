@@ -64,32 +64,26 @@ export function SchedulerProvider({
 
   // Station management
   const updateStation = useCallback((stationId: string, updates: Partial<Station>) => {
-    setStationsList((prev) => {
-      const updated = prev.map((s) => (s.id === stationId ? { ...s, ...updates } : s));
-      if ("maxParallelCars" in updates) {
-        // Regenerate slots for all stations using the updated bay count
-        const fresh = generateAllTimeSlots(updated, appSettings);
-        setSlotsList((cur) => {
-          const bookedIds = new Set(cur.filter((s) => !s.isAvailable).map((s) => s.id));
-          return fresh.map((s) => (bookedIds.has(s.id) ? { ...s, isAvailable: false } : s));
-        });
-      }
-      return updated;
-    });
-  }, [appSettings]);
-
-  const updateSettings = useCallback((updates: Partial<SystemSettings>) => {
-    setAppSettings((prev) => {
-      const next = { ...prev, ...updates };
-      // Regenerate slots for new settings, preserving any already-booked slots
-      const fresh = generateAllTimeSlots(stationsList, next);
+    const newStations = stationsList.map((s) => (s.id === stationId ? { ...s, ...updates } : s));
+    setStationsList(newStations);
+    if ("maxParallelCars" in updates) {
+      const fresh = generateAllTimeSlots(newStations, appSettings);
       setSlotsList((cur) => {
         const bookedIds = new Set(cur.filter((s) => !s.isAvailable).map((s) => s.id));
         return fresh.map((s) => (bookedIds.has(s.id) ? { ...s, isAvailable: false } : s));
       });
-      return next;
+    }
+  }, [stationsList, appSettings]);
+
+  const updateSettings = useCallback((updates: Partial<SystemSettings>) => {
+    const next = { ...appSettings, ...updates };
+    setAppSettings(next);
+    const fresh = generateAllTimeSlots(stationsList, next);
+    setSlotsList((cur) => {
+      const bookedIds = new Set(cur.filter((s) => !s.isAvailable).map((s) => s.id));
+      return fresh.map((s) => (bookedIds.has(s.id) ? { ...s, isAvailable: false } : s));
     });
-  }, [stationsList]);
+  }, [stationsList, appSettings]);
 
   // Booking management
   const createBooking = useCallback((booking: Booking) => {

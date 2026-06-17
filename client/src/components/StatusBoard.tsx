@@ -9,34 +9,55 @@ interface StatusBoardProps {
   onBookSlot?: (slotId: string) => void;
 }
 
+type BookingStatus = "pending" | "confirmed" | "in-progress" | "completed" | "cancelled";
+
 // Flip cell: animates when its key changes (status flip)
 function FlipCell({
   value,
   available,
   isPast,
   isCurrent,
+  bookingStatus,
   onClick,
 }: {
   value: string;
   available: boolean;
   isPast: boolean;
   isCurrent: boolean;
+  bookingStatus?: BookingStatus;
   onClick?: () => void;
 }) {
   const canClick = available && !isPast && !!onClick;
 
+  const bookedColor =
+    bookingStatus === "pending"
+      ? "bg-yellow-950 text-yellow-400 border-yellow-800"
+      : bookingStatus === "in-progress"
+        ? "bg-orange-950 text-orange-400 border-orange-700"
+        : "bg-slate-800 text-slate-500 border-slate-700";
+
   const baseClass = [
     "relative flex items-center justify-center min-w-[72px] h-10 rounded-sm border text-[11px] font-mono font-bold tracking-wide select-none transition-colors duration-150",
-    isCurrent ? "border-amber-400 ring-1 ring-amber-400" : "border-slate-700",
+    isCurrent ? "ring-1 ring-amber-400" : "",
     isPast
       ? "bg-slate-900 border-slate-800 text-slate-700 opacity-50"
       : available
         ? "bg-slate-950 text-emerald-400 border-emerald-800"
-        : "bg-slate-800 text-slate-500 border-slate-700",
+        : bookedColor,
     canClick
       ? "cursor-pointer hover:bg-emerald-950 hover:border-emerald-500 hover:shadow-[0_0_8px_rgba(52,211,153,0.4)] active:scale-95"
       : "",
   ].join(" ");
+
+  const label = isPast
+    ? "——"
+    : available
+      ? "OPEN"
+      : bookingStatus === "pending"
+        ? "PENDING"
+        : bookingStatus === "in-progress"
+          ? "ACTIVE"
+          : "BOOKED";
 
   return (
     // Outer div handles all pointer events — keeps clicks reliable regardless of inner animation
@@ -47,20 +68,14 @@ function FlipCell({
     >
       <AnimatePresence mode="wait">
         <motion.span
-          key={value + (isPast ? "-past" : available ? "-open" : "-booked")}
+          key={value + label}
           initial={{ y: -14, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 14, opacity: 0 }}
           transition={{ duration: 0.18, ease: "easeOut" }}
           className="pointer-events-none flex items-center justify-center w-full"
         >
-          {isPast ? (
-            <span>——</span>
-          ) : available ? (
-            <span className="uppercase">OPEN</span>
-          ) : (
-            <span className="uppercase tracking-widest">BOOKED</span>
-          )}
+          <span className="uppercase">{label}</span>
         </motion.span>
       </AnimatePresence>
       {isCurrent && (
@@ -100,12 +115,15 @@ export function StatusBoard({ selectedStationId, selectedDate, onBookSlot }: Sta
   useEffect(() => {
     if (!scrollRef.current) return;
     const currentHour = currentTime.getHours();
-    const startHour = 9;
-    if (currentHour >= startHour && currentHour <= 17) {
+    const [startHour] = settings.businessHours.startTime.split(":").map(Number);
+    const [endHour] = settings.businessHours.endTime.split(":").map(Number);
+    if (currentHour >= startHour && currentHour <= endHour) {
+      const slotsPerHour = 60 / (settings.slotDuration ?? 30);
       const cellWidth = 80;
-      const offset = (currentHour - startHour) * 2 * cellWidth;
+      const offset = (currentHour - startHour) * slotsPerHour * cellWidth;
       scrollRef.current.scrollLeft = Math.max(0, offset - 100);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const displayStations = selectedStationId
@@ -122,6 +140,8 @@ export function StatusBoard({ selectedStationId, selectedDate, onBookSlot }: Sta
 
   // All unique time labels (sorted) — past slots hidden when viewing today
   const isToday = dateKey === currentTime.toISOString().split("T")[0];
+  const slotDuration = settings.slotDuration ?? 30;
+
   const allTimeLabels = Array.from(
     new Set(
       timeSlots
@@ -132,7 +152,7 @@ export function StatusBoard({ selectedStationId, selectedDate, onBookSlot }: Sta
   ).sort().filter((t) => {
     if (!isToday) return true;
     const [h, m] = t.split(":").map(Number);
-    const slotEnd = h * 60 + m + 30; // slot is hidden only after it fully ends
+    const slotEnd = h * 60 + m + slotDuration;
     const nowMin = currentTime.getHours() * 60 + currentTime.getMinutes();
     return slotEnd > nowMin;
   });
@@ -154,15 +174,16 @@ export function StatusBoard({ selectedStationId, selectedDate, onBookSlot }: Sta
   function isTimePast(timeStr: string) {
     if (dateKey !== currentTime.toISOString().split("T")[0]) return false;
     const [h, m] = timeStr.split(":").map(Number);
-    const [ch, cm] = [currentTime.getHours(), currentTime.getMinutes()];
-    return h < ch || (h === ch && m < cm);
+    const slotEndMin = h * 60 + m + (settings.slotDuration ?? 30);
+    const nowMin = currentTime.getHours() * 60 + currentTime.getMinutes();
+    return slotEndMin <= nowMin;
   }
 
   function isTimeCurrent(timeStr: string) {
     if (dateKey !== currentTime.toISOString().split("T")[0]) return false;
     const [h, m] = timeStr.split(":").map(Number);
     const slotStartMin = h * 60 + m;
-    const slotEndMin = slotStartMin + 30; // assumes 30-min slots
+    const slotEndMin = slotStartMin + (settings.slotDuration ?? 30);
     const nowMin = currentTime.getHours() * 60 + currentTime.getMinutes();
     return nowMin >= slotStartMin && nowMin < slotEndMin;
   }
@@ -325,6 +346,7 @@ export function StatusBoard({ selectedStationId, selectedDate, onBookSlot }: Sta
                               available={slot.isAvailable}
                               isPast={isTimePast(t)}
                               isCurrent={isTimeCurrent(t)}
+                              bookingStatus={booking?.status}
                               onClick={onBookSlot ? () => onBookSlot(slot.id) : undefined}
                             />
                           );

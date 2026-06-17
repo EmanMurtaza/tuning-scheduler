@@ -93,7 +93,7 @@ export function BookingForm({
       enginePower: formData.enginePower,
       tuningTypeId: formData.tuningTypeId,
       bookingTime: new Date().toISOString(),
-      status: "confirmed",
+      status: "pending",
       totalPrice: tuningType?.basePrice || 0,
       notificationSent: false,
       reminderSent: false,
@@ -105,7 +105,7 @@ export function BookingForm({
     setSubmitted(true);
     setLoading(false);
 
-    toast.success("Booking confirmed! Notification sent to your phone.");
+    toast.success("Booking request submitted! Awaiting workshop confirmation.");
 
     // Auto-close after 3 seconds
     setTimeout(() => {
@@ -136,18 +136,21 @@ export function BookingForm({
 
         {submitted ? (
           <div className="flex flex-col items-center justify-center py-12 space-y-4">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center animate-pulse">
-              <CheckCircle2 className="w-10 h-10 text-green-600" />
+            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center animate-pulse">
+              <CheckCircle2 className="w-10 h-10 text-yellow-600" />
             </div>
             <div className="text-center">
               <h3 className="text-xl font-bold text-slate-900 mb-2">
-                Booking Confirmed!
+                Request Submitted!
               </h3>
-              <p className="text-slate-600 mb-4">
-                Confirmation details sent to {formData.contactNumber}
+              <p className="text-slate-600 mb-1">
+                Your booking is pending workshop confirmation.
               </p>
-              <Badge className="bg-green-100 text-green-800">
-                Booking ID: {formData.customerName.split(" ")[0]}-{Date.now().toString().slice(-4)}
+              <p className="text-slate-500 text-sm mb-4">
+                You'll be notified at {formData.contactNumber}
+              </p>
+              <Badge className="bg-yellow-100 text-yellow-800 border border-yellow-300">
+                Ref: {formData.customerName.split(" ")[0].toUpperCase()}-{Date.now().toString().slice(-4)}
               </Badge>
             </div>
           </div>

@@ -256,14 +256,18 @@ export default function CustomerDashboard() {
                       <Badge
                         className={[
                           "font-mono text-xs",
-                          booking.status === "in-progress"
-                            ? "bg-amber-900 text-amber-300 border border-amber-700"
-                            : booking.status === "completed"
-                              ? "bg-emerald-900 text-emerald-300 border border-emerald-700"
-                              : "bg-slate-800 text-slate-300 border border-slate-700",
+                          booking.status === "pending"
+                            ? "bg-yellow-900 text-yellow-300 border border-yellow-700"
+                            : booking.status === "in-progress"
+                              ? "bg-amber-900 text-amber-300 border border-amber-700"
+                              : booking.status === "completed"
+                                ? "bg-emerald-900 text-emerald-300 border border-emerald-700"
+                                : booking.status === "confirmed"
+                                  ? "bg-blue-900 text-blue-300 border border-blue-700"
+                                  : "bg-slate-800 text-slate-300 border border-slate-700",
                         ].join(" ")}
                       >
-                        {booking.status.toUpperCase()}
+                        {booking.status === "pending" ? "PENDING APPROVAL" : booking.status.toUpperCase()}
                       </Badge>
                     </div>
 

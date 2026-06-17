@@ -39,7 +39,7 @@ export interface Booking {
   enginePower?: string;
   tuningTypeId: string;
   bookingTime: string; // ISO timestamp
-  status: "confirmed" | "in-progress" | "completed" | "cancelled";
+  status: "pending" | "confirmed" | "in-progress" | "completed" | "cancelled";
   totalPrice: number;
   notificationSent: boolean;
   reminderSent: boolean;
