@@ -633,6 +633,12 @@ export default function AdminPanel() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [gridDate, setGridDate] = useState(new Date().toISOString().split("T")[0]);
 
+  // useMemo must be called unconditionally (before any early return)
+  const filteredBookings = useMemo(() => {
+    if (statusFilter === "all") return [...bookings].reverse();
+    return [...bookings].reverse().filter((b) => b.status === statusFilter);
+  }, [bookings, statusFilter]);
+
   const handleLogout = () => {
     localStorage.removeItem(AUTH_KEY);
     setAuthed(false);
@@ -674,11 +680,6 @@ export default function AdminPanel() {
   const totalRevenue = bookings.reduce((s, b) => s + (b.totalPrice || 0), 0);
   const completedRevenue = completedBookings.reduce((s, b) => s + (b.totalPrice || 0), 0);
   const recentBookings = [...bookings].reverse().slice(0, 8);
-
-  const filteredBookings = useMemo(() => {
-    if (statusFilter === "all") return [...bookings].reverse();
-    return [...bookings].reverse().filter((b) => b.status === statusFilter);
-  }, [bookings, statusFilter]);
 
   const openDetail = (b: Booking) => {
     setSelectedBooking(b);
