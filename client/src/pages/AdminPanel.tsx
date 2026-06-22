@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useScheduler } from "@/contexts/SchedulerContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -46,15 +46,13 @@ import {
   Play,
   CheckSquare,
 } from "lucide-react";
-import { Booking, TuningType, Station } from "@/lib/mockData";
+import { Booking, TuningType, Station, isDayClosed } from "@/lib/mockData";
 import { nanoid } from "nanoid";
 import { useLocation } from "wouter";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-const ADMIN_USER = "admin";
-const ADMIN_PASS = "admin123";
-const AUTH_KEY = "tuning_admin_auth";
+const AUTH_KEY = "tuning_admin_token";
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
@@ -79,6 +77,15 @@ function statusLabel(status: Booking["status"]) {
 }
 
 // ─── Print Invoice ────────────────────────────────────────────────────────────
+
+function escHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 function printInvoice(booking: Booking, tuningName: string, stationName: string, slotTime: string) {
   const now = new Date().toLocaleDateString("en-US", {
@@ -118,37 +125,37 @@ function printInvoice(booking: Booking, tuningName: string, stationName: string,
   <div class="header-row">
     <div><div class="invoice-title">Invoice</div><span class="status-badge">${statusLabel(booking.status)}</span></div>
     <div class="invoice-meta">
-      <p>Invoice No: <strong>#${booking.id.slice(-8).toUpperCase()}</strong></p>
+      <p>Invoice No: <strong>#${escHtml(booking.id.slice(-8).toUpperCase())}</strong></p>
       <p>Date: <strong>${now}</strong></p>
-      <p>Booking Ref: <strong>${booking.id}</strong></p>
+      <p>Booking Ref: <strong>${escHtml(booking.id)}</strong></p>
     </div>
   </div>
   <div class="info-grid">
     <div>
       <div class="section-title">Customer</div>
       <div class="info-block">
-        <p>Name</p><strong>${booking.customerName}</strong>
-        <p style="margin-top:8px">Contact</p><strong>${booking.contactNumber}</strong>
+        <p>Name</p><strong>${escHtml(booking.customerName)}</strong>
+        <p style="margin-top:8px">Contact</p><strong>${escHtml(booking.contactNumber)}</strong>
       </div>
     </div>
     <div>
       <div class="section-title">Appointment</div>
       <div class="info-block">
-        <p>Station</p><strong>${stationName}</strong>
-        <p style="margin-top:8px">Time Slot</p><strong>${slotTime}</strong>
+        <p>Station</p><strong>${escHtml(stationName)}</strong>
+        <p style="margin-top:8px">Time Slot</p><strong>${escHtml(slotTime)}</strong>
       </div>
     </div>
   </div>
   <div class="section-title">Vehicle</div>
   <div class="info-grid" style="margin-bottom:28px">
-    <div class="info-block"><p>Car</p><strong>${booking.carType}</strong></div>
-    <div class="info-block"><p>Engine</p><strong>${booking.engineType}${booking.enginePower ? " · " + booking.enginePower : ""}</strong></div>
+    <div class="info-block"><p>Car</p><strong>${escHtml(booking.carType)}</strong></div>
+    <div class="info-block"><p>Engine</p><strong>${escHtml(booking.engineType)}${booking.enginePower ? " · " + escHtml(booking.enginePower) : ""}</strong></div>
   </div>
   <div class="section-title">Services</div>
   <table>
     <thead><tr><th>Service</th><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
     <tbody>
-      <tr><td>${tuningName}</td><td>Professional tuning service</td><td style="text-align:right">Rs. ${booking.totalPrice.toLocaleString()}</td></tr>
+      <tr><td>${escHtml(tuningName)}</td><td>Professional tuning service</td><td style="text-align:right">Rs. ${booking.totalPrice.toLocaleString()}</td></tr>
     </tbody>
     <tfoot>
       <tr class="total-row"><td colspan="2">Total</td><td style="text-align:right">Rs. ${booking.totalPrice.toLocaleString()}</td></tr>
@@ -188,6 +195,7 @@ function BookingDetailDialog({
   const handleStatusChange = (newStatus: Booking["status"]) => {
     updateBooking(booking.id, { status: newStatus });
     toast.success(`Booking marked as ${statusLabel(newStatus)}`);
+    onClose();
   };
 
   const handleCancel = () => {
@@ -334,10 +342,7 @@ function BookingDetailDialog({
 function AdminBookingGrid({ dateKey }: { dateKey: string }) {
   const { stations, timeSlots, bookings, settings } = useScheduler();
 
-  const workingDays = settings.workingDays ?? [1, 2, 3, 4, 5];
-  const holidays = settings.holidays ?? [];
-  const viewedDay = new Date(dateKey + "T00:00:00").getDay();
-  const isClosed = !workingDays.includes(viewedDay) || holidays.includes(dateKey);
+  const isClosed = isDayClosed(dateKey, settings);
 
   if (isClosed) {
     return (
@@ -517,14 +522,24 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
     e.preventDefault();
     setError("");
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 600));
-    if (username === ADMIN_USER && password === ADMIN_PASS) {
-      localStorage.setItem(AUTH_KEY, "1");
+    try {
+      const res = await fetch("/api/admin-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      if (!res.ok) {
+        setError("Invalid username or password.");
+        return;
+      }
+      const { token } = await res.json();
+      sessionStorage.setItem(AUTH_KEY, token);
       onLogin();
-    } else {
-      setError("Invalid username or password.");
+    } catch {
+      setError("Connection error. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -617,7 +632,25 @@ export default function AdminPanel() {
     deleteTuningType,
   } = useScheduler();
   const [, setLocation] = useLocation();
-  const [authed, setAuthed] = useState(() => localStorage.getItem(AUTH_KEY) === "1");
+  const [authed, setAuthed] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
+
+  useEffect(() => {
+    const token = sessionStorage.getItem(AUTH_KEY);
+    if (!token) { setAuthChecking(false); return; }
+    fetch("/api/admin-verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    })
+      .then((r) => r.json())
+      .then(({ ok }) => {
+        setAuthed(!!ok);
+        if (!ok) sessionStorage.removeItem(AUTH_KEY);
+      })
+      .catch(() => sessionStorage.removeItem(AUTH_KEY))
+      .finally(() => setAuthChecking(false));
+  }, []);
   const [newTuning, setNewTuning] = useState<Partial<TuningType>>({});
   const [newSettings, setNewSettings] = useState({
     ...settings,
@@ -640,10 +673,11 @@ export default function AdminPanel() {
   }, [bookings, statusFilter]);
 
   const handleLogout = () => {
-    localStorage.removeItem(AUTH_KEY);
+    sessionStorage.removeItem(AUTH_KEY);
     setAuthed(false);
   };
 
+  if (authChecking) return null;
   if (!authed) return <AdminLogin onLogin={() => setAuthed(true)} />;
 
   const handleUpdateStation = (stationId: string, field: string, value: any) => {
@@ -1421,9 +1455,10 @@ export default function AdminPanel() {
                       <Input
                         type="number"
                         value={newSettings.slotDuration}
-                        onChange={(e) =>
-                          setNewSettings({ ...newSettings, slotDuration: parseInt(e.target.value) })
-                        }
+                        onChange={(e) => {
+                          const v = parseInt(e.target.value);
+                          if (!isNaN(v) && v > 0) setNewSettings({ ...newSettings, slotDuration: v });
+                        }}
                         className="mt-2 border-slate-300"
                       />
                     </div>

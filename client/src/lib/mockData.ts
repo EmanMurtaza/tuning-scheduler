@@ -125,6 +125,14 @@ export const systemSettings: SystemSettings = {
   workingDays: [1, 2, 3, 4, 5], // Mon–Fri
 };
 
+// Returns true when the workshop is closed on the given date (non-working day or holiday)
+export function isDayClosed(dateKey: string, settings: SystemSettings): boolean {
+  const workingDays = settings.workingDays ?? [1, 2, 3, 4, 5];
+  const holidays = settings.holidays ?? [];
+  const dayOfWeek = new Date(dateKey + "T00:00:00").getDay();
+  return !workingDays.includes(dayOfWeek) || holidays.includes(dateKey);
+}
+
 // Generate time slots for a given date, station, and all bays
 export function generateTimeSlots(
   stationId: string,
@@ -189,11 +197,8 @@ export function generateAllTimeSlots(
     date.setDate(date.getDate() + dayOffset);
 
     const dateKey = date.toISOString().split("T")[0];
-    const dayOfWeek = date.getDay(); // 0 = Sun
 
-    // Skip non-working days and holidays
-    if (!(settings.workingDays ?? [1, 2, 3, 4, 5]).includes(dayOfWeek)) continue;
-    if ((settings.holidays ?? []).includes(dateKey)) continue;
+    if (isDayClosed(dateKey, settings)) continue;
 
     for (const station of stationsData) {
       const slots = generateTimeSlots(station.id, date, station.maxParallelCars, settings);

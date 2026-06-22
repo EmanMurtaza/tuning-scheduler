@@ -1,6 +1,7 @@
 import { jsxLocPlugin } from "@builder.io/vite-plugin-jsx-loc";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
@@ -203,7 +204,78 @@ function vitePluginStorageProxy(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector(), vitePluginStorageProxy()];
+// ─── Admin auth middleware (dev server only) ──────────────────────────────────
+// Production uses Vercel serverless functions in api/. This plugin mirrors
+// that behaviour for local `pnpm dev` without needing a separate server.
+
+function makeAuthToken(secret: string): string {
+  const payload = Buffer.from(
+    JSON.stringify({ exp: Date.now() + 8 * 60 * 60 * 1000 })
+  ).toString("base64url");
+  const sig = crypto.createHmac("sha256", secret).update(payload).digest("base64url");
+  return `${payload}.${sig}`;
+}
+
+function verifyAuthToken(token: string, secret: string): boolean {
+  const parts = token.split(".");
+  if (parts.length !== 2) return false;
+  const [payload, sig] = parts;
+  const expected = crypto.createHmac("sha256", secret).update(payload).digest("base64url");
+  try {
+    const sigBuf = Buffer.from(sig, "base64url");
+    const expBuf = Buffer.from(expected, "base64url");
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return false;
+    const { exp } = JSON.parse(Buffer.from(payload, "base64url").toString());
+    return Date.now() < exp;
+  } catch {
+    return false;
+  }
+}
+
+function parseJsonBody(req: any): Promise<Record<string, string>> {
+  return new Promise((resolve) => {
+    let body = "";
+    req.on("data", (c: Buffer) => { body += c.toString(); });
+    req.on("end", () => { try { resolve(JSON.parse(body)); } catch { resolve({}); } });
+  });
+}
+
+function vitePluginAdminAuth(): Plugin {
+  return {
+    name: "admin-auth",
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use("/api/admin-login", async (req: any, res: any) => {
+        if (req.method !== "POST") { res.writeHead(405).end(); return; }
+        const { username = "", password = "" } = await parseJsonBody(req);
+        const adminUser = process.env.ADMIN_USER ?? "";
+        const adminPass = process.env.ADMIN_PASS ?? "";
+        const jwtSecret = process.env.ADMIN_JWT_SECRET ?? "dev-secret-change-in-env";
+        const ok =
+          adminUser && adminPass &&
+          username === adminUser &&
+          password === adminPass;
+        if (!ok) {
+          res.writeHead(401, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Invalid credentials" }));
+          return;
+        }
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ token: makeAuthToken(jwtSecret) }));
+      });
+
+      server.middlewares.use("/api/admin-verify", async (req: any, res: any) => {
+        if (req.method !== "POST") { res.writeHead(405).end(); return; }
+        const { token = "" } = await parseJsonBody(req);
+        const jwtSecret = process.env.ADMIN_JWT_SECRET ?? "dev-secret-change-in-env";
+        const ok = verifyAuthToken(String(token), jwtSecret);
+        res.writeHead(ok ? 200 : 401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok }));
+      });
+    },
+  };
+}
+
+const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector(), vitePluginStorageProxy(), vitePluginAdminAuth()];
 
 export default defineConfig({
   plugins,

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useRef } from "react";
 import {
   Booking,
   Station,
@@ -62,28 +62,40 @@ export function SchedulerProvider({
   const [bookingsList, setBookingsList] = useState<Booking[]>(sampleBookings);
   const [appSettings, setAppSettings] = useState<SystemSettings>(systemSettings);
 
+  // Always-current refs so callbacks never close over stale state
+  const appSettingsRef = useRef(appSettings);
+  appSettingsRef.current = appSettings;
+  const stationsListRef = useRef(stationsList);
+  stationsListRef.current = stationsList;
+  const bookingsListRef = useRef(bookingsList);
+  bookingsListRef.current = bookingsList;
+
   // Station management
   const updateStation = useCallback((stationId: string, updates: Partial<Station>) => {
-    const newStations = stationsList.map((s) => (s.id === stationId ? { ...s, ...updates } : s));
-    setStationsList(newStations);
-    if ("maxParallelCars" in updates) {
-      const fresh = generateAllTimeSlots(newStations, appSettings);
+    setStationsList((prev) => {
+      const newStations = prev.map((s) => (s.id === stationId ? { ...s, ...updates } : s));
+      if ("maxParallelCars" in updates) {
+        const fresh = generateAllTimeSlots(newStations, appSettingsRef.current);
+        setSlotsList((cur) => {
+          const bookedIds = new Set(cur.filter((s) => !s.isAvailable).map((s) => s.id));
+          return fresh.map((s) => (bookedIds.has(s.id) ? { ...s, isAvailable: false } : s));
+        });
+      }
+      return newStations;
+    });
+  }, []);
+
+  const updateSettings = useCallback((updates: Partial<SystemSettings>) => {
+    setAppSettings((prev) => {
+      const next = { ...prev, ...updates };
+      const fresh = generateAllTimeSlots(stationsListRef.current, next);
       setSlotsList((cur) => {
         const bookedIds = new Set(cur.filter((s) => !s.isAvailable).map((s) => s.id));
         return fresh.map((s) => (bookedIds.has(s.id) ? { ...s, isAvailable: false } : s));
       });
-    }
-  }, [stationsList, appSettings]);
-
-  const updateSettings = useCallback((updates: Partial<SystemSettings>) => {
-    const next = { ...appSettings, ...updates };
-    setAppSettings(next);
-    const fresh = generateAllTimeSlots(stationsList, next);
-    setSlotsList((cur) => {
-      const bookedIds = new Set(cur.filter((s) => !s.isAvailable).map((s) => s.id));
-      return fresh.map((s) => (bookedIds.has(s.id) ? { ...s, isAvailable: false } : s));
+      return next;
     });
-  }, [stationsList, appSettings]);
+  }, []);
 
   // Booking management
   const createBooking = useCallback((booking: Booking) => {
@@ -99,7 +111,7 @@ export function SchedulerProvider({
   }, []);
 
   const cancelBooking = useCallback((bookingId: string) => {
-    const booking = bookingsList.find((b) => b.id === bookingId);
+    const booking = bookingsListRef.current.find((b) => b.id === bookingId);
     if (booking) {
       setBookingsList((prev) =>
         prev.map((b) =>
@@ -109,7 +121,7 @@ export function SchedulerProvider({
       // Mark slot as available again
       updateSlot(booking.slotId, { isAvailable: true, bookedBy: undefined });
     }
-  }, [bookingsList]);
+  }, []);
 
   const getBookingsByStation = useCallback(
     (stationId: string) => {

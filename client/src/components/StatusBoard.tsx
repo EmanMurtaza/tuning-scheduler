@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useScheduler } from "@/contexts/SchedulerContext";
+import { isDayClosed } from "@/lib/mockData";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, MapPin, Wifi, Ban, CalendarX } from "lucide-react";
 
@@ -113,7 +114,7 @@ export function StatusBoard({ selectedStationId, selectedDate, onBookSlot }: Sta
 
   // Scroll to current time on mount
   useEffect(() => {
-    if (!scrollRef.current) return;
+    if (!scrollRef.current || !settings.businessHours) return;
     const currentHour = currentTime.getHours();
     const [startHour] = settings.businessHours.startTime.split(":").map(Number);
     const [endHour] = settings.businessHours.endTime.split(":").map(Number);
@@ -158,12 +159,9 @@ export function StatusBoard({ selectedStationId, selectedDate, onBookSlot }: Sta
   });
 
   // Closed-day detection driven by admin settings
-  const workingDays = settings.workingDays ?? [1, 2, 3, 4, 5];
   const holidays = settings.holidays ?? [];
-  const viewedDayOfWeek = new Date(dateKey + "T00:00:00").getDay();
   const isHoliday = holidays.includes(dateKey);
-  const isNonWorkingDay = !workingDays.includes(viewedDayOfWeek);
-  const isClosed = isHoliday || isNonWorkingDay;
+  const isClosed = isDayClosed(dateKey, settings);
 
   const formatClock = (d: Date) =>
     d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });

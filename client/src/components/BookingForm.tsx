@@ -57,6 +57,7 @@ export function BookingForm({
 
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [bookingRef, setBookingRef] = useState("");
 
   const station = stations.find((s) => s.id === stationId);
   const slot = timeSlots.find((s) => s.id === slotId);
@@ -102,6 +103,7 @@ export function BookingForm({
     createBooking(booking);
     sendBookingNotification(booking.id);
 
+    setBookingRef(booking.id.slice(-8).toUpperCase());
     setSubmitted(true);
     setLoading(false);
 
@@ -110,6 +112,7 @@ export function BookingForm({
     // Auto-close after 3 seconds
     setTimeout(() => {
       setSubmitted(false);
+      setBookingRef("");
       setFormData({
         customerName: "",
         contactNumber: "",
@@ -150,7 +153,7 @@ export function BookingForm({
                 You'll be notified at {formData.contactNumber}
               </p>
               <Badge className="bg-yellow-100 text-yellow-800 border border-yellow-300">
-                Ref: {formData.customerName.split(" ")[0].toUpperCase()}-{Date.now().toString().slice(-4)}
+                Ref: {bookingRef}
               </Badge>
             </div>
           </div>
